@@ -12,8 +12,10 @@
 ###########################################################
 # library imports
 import sys
+import numpy as np
 import pandas as pd
 import datetime as dt
+import pmdarima as pm 
 
 from matplotlib import pyplot
 
@@ -86,7 +88,37 @@ print(stVals)
 size = int(len(stVals) * 0.66)
 train, test = stVals[0:size], stVals[size:len(stVals)]
 history = [x for x in train]
-#print(history)
 
+history = np.delete(history, 0,1)
 
+print(history)
+
+model = pm.auto_arima(history, start_p=1, start_q=1,
+                      test='adf',       # use adftest to find optimal 'd'
+                      max_p=3, max_q=3, # maximum p and q
+                      m=1,              # frequency of series
+                      d=None,           # let model determine 'd'
+                      seasonal=True,   # No Seasonality
+                      start_P=0, 
+                      D=0, 
+                      trace=True,
+                      error_action='ignore',  
+                      suppress_warnings=True, 
+                      stepwise=True)
+
+print(model.summary())
+n_periods = 672
+
+#, index=test.index)
+pr= pd.DataFrame(model.predict(n_periods=n_periods))
+pr.columns = ['Predicted Consumption']
+print(pr)
+
+pyplot.figure(figsize=(8,5))
+pyplot.title("Actual vs Prediction for " + inputFile)
+pyplot.plot(train,color='green',label='Training')
+pyplot.plot(test, color='blue', label ='Test')
+pyplot.plot(pr, color='red', label ='Predictions')
+pyplot.legend(loc ='upper right')
+pyplot.show()
 
