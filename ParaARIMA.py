@@ -74,10 +74,19 @@ st_arimaFrame = st_arimaFrame.stack()
 #st_arimaFrame.index = st_arimaFrame.index.get_level_values(0) + st_arimaFrame.index.get_level_values(1)
 st_arimaFrame = st_arimaFrame.reset_index()
 st_arimaFrame.columns = ["Date", "AMI Meter ID", "Value"]
+st_arimaFrame.astype({'AMI Meter ID':'int32'}, copy=False)
 
 print (st_arimaFrame.head(5))
 print (st_arimaFrame.info())
 
 st_arimaFrame = st_arimaFrame.set_index('Date')
+
+stVals = st_arimaFrame.values
+print(stVals)
+size = int(len(stVals) * 0.66)
+train, test = stVals[0:size], stVals[size:len(stVals)]
+history = [x for x in train]
+#print(history)
+
 
 
