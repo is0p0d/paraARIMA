@@ -100,6 +100,9 @@ for dfIndex, dfColumns in enumerate(arimaFrame.columns[1:]): #skip the first col
 ###########################################################
 # ARIMA Preconditioning
 
+
+# TO DO: split training and test data, build wrapper
+# TO DO 2: get seasonality package from rajesh
 meterIndex = 0
 for frameIndex in frameCollection:
     meterIndex += 1
