@@ -17,14 +17,30 @@ import pandas as pd
 import datetime as dt
 # import pmdarima as pm 
 from pmdarima.arima import ADFTest
+from dataclasses import dataclass
 
 from matplotlib import pyplot
 
 ###########################################################
+# Data Structures
+@dataclass
+class modelWrapper: 
+    isStationary = 0
+    stationaryP = 0
+    localTrain = 0
+    localTest = 0
+    arimaModel = 0
+    r2Result = 0
+
+frameCollection = [] # list for data frames
+wrapperCollection = [] # to hold various data points for each arima model
+
+###########################################################
 # global variables (because python)
+adf_test = ADFTest(alpha = 0.05)
 inputFile = "\0"
 outputFile = "\0"
-frameCollection = [] # array for data frames 
+
 ###########################################################
 # command line argument handling
 numArgs = len(sys.argv)
@@ -77,15 +93,18 @@ for dfIndex, dfColumns in enumerate(arimaFrame.columns[1:]): #skip the first col
     tempFrame.set_index('Date', inplace = True)
     frameCollection.append(tempFrame)
 
-for frameIndex in frameCollection:
-#     print(frameIndex)
-    frameIndex.plot()
+# for frameIndex in frameCollection:
+# #     print(frameIndex)
+#     frameIndex.plot()
 
-adf_test = ADFTest(alpha = 0.05)
+###########################################################
+# ARIMA Preconditioning
 
 meterIndex = 0
 for frameIndex in frameCollection:
     meterIndex += 1
-    print("ADF on #", meterIndex, ":", frameIndex.columns, adf_test.should_diff(frameIndex))
+    framePval, frameStationary = adf_test.should_diff(frameIndex)
+    print("ADF on #", meterIndex, ":", frameIndex.columns, "(", frameStationary, ",", framePval, ")")
+    #wrapperCollection.append(modelWrapper)
     
-pyplot.show()
+# pyplot.show()
