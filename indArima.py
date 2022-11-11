@@ -18,13 +18,12 @@ import datetime as dt
 # import pmdarima as pm 
 from pmdarima.arima import ADFTest
 from dataclasses import dataclass
-
 from matplotlib import pyplot
 
 ###########################################################
 # Data Structures
 @dataclass
-class modelWrapper: 
+class arimaData:
     isStationary = 0
     stationaryP = 0
     localTrain = 0
@@ -32,8 +31,13 @@ class modelWrapper:
     arimaModel = 0
     r2Result = 0
 
+@dataclass
+class meterWrapper:
+    meterID = 0 
+    seasons = []
+
 frameCollection = [] # list for data frames
-wrapperCollection = [] # to hold various data points for each arima model
+meterCollection = [] # to hold various data points for each arima model
 
 ###########################################################
 # global variables (because python)
