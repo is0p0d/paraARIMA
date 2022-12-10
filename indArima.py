@@ -17,6 +17,7 @@ import pandas as pd
 import datetime as dt
 # import pmdarima as pm 
 from pmdarima.arima import ADFTest
+from pmdarima.arima import auto_arima
 from dataclasses import dataclass
 from matplotlib import pyplot
 
@@ -28,6 +29,7 @@ class arimaData:
     stationaryP = 0
     localTrain = 0
     localTest = 0
+    localPrediction = 0
     arimaModel = 0
     r2Result = 0
 
@@ -35,6 +37,7 @@ class arimaData:
 class meterWrapper:
     meterID = 0 
     seasons = []
+    models = []
 
 frameCollection = [] # list for data frames
 meterCollection = [] # to hold various data points for each arima model
@@ -45,6 +48,7 @@ adf_test = ADFTest(alpha = 0.05)
 inputFile = "\0"
 outputFile = "\0"
 seasonality = 'M'
+trainVal = .8
 
 ###########################################################
 # command line argument handling
@@ -127,6 +131,7 @@ for frameIndex in frameCollection:
     tempMeter.meterID = tempID
 
     tempGroups = frameIndex.groupby(pd.Grouper(freq='M')) # Binning the data by seasonality, noted in documentation can be more values than whats suggested
+                                                          # TO DO: logic for various seasonality inputs
     tempMeter.seasons = [group for groupIndex, group in tempGroups]
     meterCollection.append(tempMeter)
     print("Done!")
@@ -140,8 +145,39 @@ for meterIndex in meterCollection:
     print("ADF on #", meterNum, ":", meterIndex.meterID)
     for seasonIndex in meterIndex.seasons:
         seasonNum += 1
+        tempData = arimaData()
+
         seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
         print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
+        tempData.stationaryP = seasonPval
+        tempData.isStationary = seasonStationary
+
+        print("----splitting season into train and test...", end='')
+        trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
+        tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
+        tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
+        print("Done!")
+
+        print("----calculating auto_arima...", end='')
+        if tempData.isStationary == True:
+            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
+                                        max_p=5,max_d=5,max_q=5, start_P=0,
+                                        D=1, start_Q=0, max_P=5,max_D=5,
+                                        max_Q=5, m=12, seasonal=True,
+                                        error_action='warn',trace=True,
+                                        supress_warnings=True,stepwise=True,
+                                        random_state=20,n_fits=50)
+        elif tempData.isStationary == False:
+            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=1,start_q=0,
+                                        max_p=5,max_d=5,max_q=5, start_P=0,
+                                        D=1, start_Q=0, max_P=5,max_D=5,
+                                        max_Q=5, m=12, seasonal=True,
+                                        error_action='warn',trace=True,
+                                        supress_warnings=True,stepwise=True,
+                                        random_state=20,n_fits=50)
+
+
+        meterIndex.models.append(tempData)
     #wrapperCollection.append(modelWrapper)
     
-# pyplot.show()
+#pyplot.show()
