@@ -44,6 +44,7 @@ meterCollection = [] # to hold various data points for each arima model
 adf_test = ADFTest(alpha = 0.05)
 inputFile = "\0"
 outputFile = "\0"
+seasonality = 'M'
 
 ###########################################################
 # command line argument handling
@@ -57,9 +58,10 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
         print ("# ParaARIMA.py - ARIMA Parallelization #")
         print ("########################################")
         print ("[usage]")
-        print ("\t[ -i : input ] \n\t\t*specifies the file to be read into memory")
-        print ("\t[ -o : output ] \n\t\t*specifies the file to be written to file\n\t\t*if this option is not present the results will not be written to file")
-        print ("\t[ -h : help ] \n\t\t*this! :)\n")
+        print ("\t[ -i : --Input ] \n\t\t*specifies the file to be read into memory")
+        print ("\t[ -o : --Output ] \n\t\t*specifies the file to be written to\n\t\t*if this option is not present the results will not\n\t\t*be written to file")
+        print ("\t[ -s : --Season ] \n\t\t*specifies the seasonality of how the program will\n\t\t*split the given data for modeling\n\t\t*d - daily, w - weekly, m - monthly, q - quarterly, y - yearly\n\t\t*default is monthly")
+        print ("\t[ -h : --Help ] \n\t\t*this! :)\n")
     elif sys.argv[argIndex] in ("-i", "--Input"):
         argIndex += 1
         inputFile = sys.argv[argIndex]
@@ -68,6 +70,18 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
         argIndex += 1
         outputFile = sys.argv[argIndex]
         print ("global outputFile set as: " + outputFile)
+    elif sys.argv[argIndex] in ("-s", "--Season"):
+        argIndex += 1
+        seasonality = sys.argv[argIndex].upper()
+        if seasonality not in ('D', 'W', 'M', 'Q', 'Y'):
+            sys.exit("!!ERROR: Invalid seasonality, please run 'indARIMA.py -h for help\n")
+        else:
+            print("global seasonality set as: " + seasonality)
+    # else:
+    #     sys.exit("!!ERROR: Argument \'" + sys.argv[argIndex] + "\' not recognized, please run 'ParaARIMA.py -h' for help.\n")
+
+
+
 
 #######################################
 # CSV Parsing and dataframe building
@@ -104,14 +118,30 @@ for dfIndex, dfColumns in enumerate(arimaFrame.columns[1:]): #skip the first col
 ###########################################################
 # ARIMA Preconditioning
 
+#Splitting frames into seasons
+
+for frameIndex in frameCollection:
+    tempID = frameIndex.columns[0]
+    print("Splitting meter " + tempID + " into seasons...", end='')
+    tempMeter = meterWrapper()
+    tempMeter.meterID = tempID
+
+    tempGroups = frameIndex.groupby(pd.Grouper(freq='M')) # Binning the data by seasonality, noted in documentation can be more values than whats suggested
+    tempMeter.seasons = [group for groupIndex, group in tempGroups]
+    meterCollection.append(tempMeter)
+    print("Done!")
 
 # TO DO: split training and test data, build wrapper
 # TO DO 2: get seasonality package from rajesh
-meterIndex = 0
-for frameIndex in frameCollection:
-    meterIndex += 1
-    framePval, frameStationary = adf_test.should_diff(frameIndex)
-    print("ADF on #", meterIndex, ":", frameIndex.columns, "(", frameStationary, ",", framePval, ")")
+meterNum = 0
+for meterIndex in meterCollection:
+    meterNum += 1
+    seasonNum = 0
+    print("ADF on #", meterNum, ":", meterIndex.meterID)
+    for seasonIndex in meterIndex.seasons:
+        seasonNum += 1
+        seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
+        print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
     #wrapperCollection.append(modelWrapper)
     
 # pyplot.show()
