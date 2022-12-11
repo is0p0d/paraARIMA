@@ -12,6 +12,7 @@
 ###########################################################
 # library imports
 import sys
+import time
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -42,6 +43,61 @@ class meterWrapper:
 
 frameCollection = [] # list for data frames
 meterCollection = [] # to hold various data points for each arima model
+
+###########################################################
+# functions
+def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
+        seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
+        print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
+        tempData.stationaryP = seasonPval
+        tempData.isStationary = seasonStationary
+
+        print("----splitting season into train and test...", end='')
+        trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
+        tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
+        tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
+        
+        pyplot.plot(tempData.localTrain, label = "Training")
+        pyplot.plot(tempData.localTest, label = "Test")
+        
+        print("Done!")
+
+        print("----calculating auto_arima...")
+        if tempData.isStationary == True:
+            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
+                                        max_p=5,max_d=5,max_q=5, start_P=0,
+                                        D=1, start_Q=0, max_P=5,max_D=5,
+                                        max_Q=5, m=12, seasonal=True,
+                                        error_action='warn',trace=True,
+                                        supress_warnings=True,stepwise=True,
+                                        random_state=20,n_fits=50)
+        elif tempData.isStationary == False:
+            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=1,start_q=0,
+                                        max_p=5,max_d=5,max_q=5, start_P=0,
+                                        D=1, start_Q=0, max_P=5,max_D=5,
+                                        max_Q=5, m=12, seasonal=True,
+                                        error_action='warn',trace=True,
+                                        supress_warnings=True,stepwise=True,
+                                        random_state=20,n_fits=50)
+        print("----Done!")
+        print("----calculating prediction...", end='')
+        tempData.localPrediction = pd.DataFrame(tempData.arimaModel.predict(n_periods=len(tempData.localTest),
+                                                                            index=tempData.localTest.index))
+        tempData.localPrediction.columns = ['predicted']
+        print("Done!")
+        print("----calculating r2 score...", end='')
+        #r2 score calculation
+        tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
+        print("Done!")
+        print("r2 score:", tempData.r2Result)
+        pyplot.plot(tempData.localPrediction, label = "Predicted")
+        pyplot.legend(loc = 'upper left')
+        pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
+
+        pyplot.savefig("./output/"+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
+        pyplot.close() 
+        meterIndex.models.append(tempData)
+
 
 ###########################################################
 # global variables (because python)
@@ -98,6 +154,8 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
 if inputFile == "\0":
     sys.exit("!!ERROR: No input file set, please run 'ParaArima.py -h' for help\n")
 
+
+StartTime = time.time()
 #read csv into a pandas dataframe
 arimaFrame = pd.read_csv(inputFile, sep = ',', header = 0)
 
@@ -110,26 +168,29 @@ arimaFrame.drop(['date','Residential', 'Total'], axis = 1, inplace = True)
 arimaFrame.rename(columns = {'AMI Meter ID':'Date'}, inplace = True)
 arimaFrame.ffill(inplace=True)
 arimaFrame['Date'] = pd.to_datetime(arimaFrame['Date'])
+EndTime = time.time()
 
 print(arimaFrame.head(5))
 
+print("\033[93m!!TIMING: CSV Input done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
+
 # split CSV into as many dataframes as there are columns
 
+StartTime = time.time()
 for dfIndex, dfColumns in enumerate(arimaFrame.columns[1:]): #skip the first column because its date
     print("Processing column: ", dfIndex+1, " ", dfColumns)
     tempFrame = arimaFrame.iloc[:, [0, dfIndex+1]].copy()
     tempFrame.set_index('Date', inplace = True)
     frameCollection.append(tempFrame)
+EndTime = time.time()
 
-# for frameIndex in frameCollection:
-# #     print(frameIndex)
-#     frameIndex.plot()
+print("\033[93m!!TIMING: CSV Split done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
 
 ###########################################################
 # ARIMA Preconditioning
 
 #Splitting frames into seasons
-
+StartTime = time.time()
 for frameIndex in frameCollection:
     tempID = frameIndex.columns[0]
     print("Splitting meter " + tempID + " into seasons...", end='')
@@ -141,68 +202,27 @@ for frameIndex in frameCollection:
     tempMeter.seasons = [group for groupIndex, group in tempGroups]
     meterCollection.append(tempMeter)
     print("Done!")
+EndTime = time.time()
+
+print("\033[93m!!TIMING: Season Split done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
 
 # TO DO: split training and test data, build wrapper
 # TO DO 2: get seasonality package from rajesh
+
+
 meterNum = 0
 for meterIndex in meterCollection:
     meterNum += 1
     seasonNum = 0
     print("ADF on #", meterNum, ":", meterIndex.meterID)
+    StartTime = time.time()
     for seasonIndex in meterIndex.seasons:
         seasonNum += 1
         tempData = arimaData()
+        arima_process(meterIndex, seasonIndex, seasonNum, tempData)
+    EndTime = time.time()
+    print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
 
-        seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
-        print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
-        tempData.stationaryP = seasonPval
-        tempData.isStationary = seasonStationary
-
-        print("----splitting season into train and test...", end='')
-        trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
-        tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
-        tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
-        
-        pyplot.plot(tempData.localTrain, label = "Training")
-        pyplot.plot(tempData.localTest, label = "Test")
-        
-        print("Done!")
-
-        print("----calculating auto_arima...")
-        if tempData.isStationary == True:
-            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
-                                        max_p=5,max_d=5,max_q=5, start_P=0,
-                                        D=1, start_Q=0, max_P=5,max_D=5,
-                                        max_Q=5, m=12, seasonal=True,
-                                        error_action='warn',trace=True,
-                                        supress_warnings=True,stepwise=True,
-                                        random_state=20,n_fits=50)
-        elif tempData.isStationary == False:
-            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=1,start_q=0,
-                                        max_p=5,max_d=5,max_q=5, start_P=0,
-                                        D=1, start_Q=0, max_P=5,max_D=5,
-                                        max_Q=5, m=12, seasonal=True,
-                                        error_action='warn',trace=True,
-                                        supress_warnings=True,stepwise=True,
-                                        random_state=20,n_fits=50)
-        print("----Done!")
-        print("----calculating prediction...", end='')
-        tempData.localPrediction = pd.DataFrame(tempData.arimaModel.predict(n_periods=len(tempData.localTest),
-                                                                            index=tempData.localTest.index))
-        tempData.localPrediction.columns = ['predicted']
-        print("Done!")
-        print("----calculating r2 score...", end='')
-        #r2 score calculation
-        tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
-        print("Done!")
-        print("r2 score:", tempData.r2Result)
-        pyplot.plot(tempData.localPrediction, label = "Predicted")
-        pyplot.legend(loc = 'upper left')
-        pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
-
-        pyplot.savefig("./output/"+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
-        pyplot.close() 
-        meterIndex.models.append(tempData)
     #wrapperCollection.append(modelWrapper)
     
 #pyplot.show()
