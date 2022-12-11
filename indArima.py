@@ -20,6 +20,7 @@ from pmdarima.arima import ADFTest
 from pmdarima.arima import auto_arima
 from dataclasses import dataclass
 from matplotlib import pyplot
+from sklearn.metrics import r2_score
 
 ###########################################################
 # Data Structures
@@ -64,7 +65,7 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
         print ("[usage]")
         print ("\t[ -i : --Input ] \n\t\t*specifies the file to be read into memory")
         print ("\t[ -o : --Output ] \n\t\t*specifies the file to be written to\n\t\t*if this option is not present the results will not\n\t\t*be written to file")
-        print ("\t[ -s : --Season ] \n\t\t*specifies the seasonality of how the program will\n\t\t*split the given data for modeling\n\t\t*d - daily, w - weekly, m - monthly, q - quarterly, y - yearly\n\t\t*default is monthly")
+        print ("\t[ -s : --Season ] \n\t\t*specifies the seasonality of how the program will\n\t\t*split the given data for modeling\n\t\t*d - daily, w - weekly, m - monthly, q - quarterly, b - biyearly\n\t\t*default is monthly")
         print ("\t[ -h : --Help ] \n\t\t*this! :)\n")
     elif sys.argv[argIndex] in ("-i", "--Input"):
         argIndex += 1
@@ -76,11 +77,16 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
         print ("global outputFile set as: " + outputFile)
     elif sys.argv[argIndex] in ("-s", "--Season"):
         argIndex += 1
-        seasonality = sys.argv[argIndex].upper()
-        if seasonality not in ('D', 'W', 'M', 'Q', 'Y'):
-            sys.exit("!!ERROR: Invalid seasonality, please run 'indARIMA.py -h for help\n")
+        if sys.argv[argIndex].upper() in ('D', 'W', 'M'):
+            seasonality = sys.argv[argIndex].upper()
+        elif sys.argv[argIndex].upper() == 'Q':
+            seasonality = '3M'
+        elif sys.argv[argIndex].upper() == 'B':
+            seasonality = '6M'
         else:
-            print("global seasonality set as: " + seasonality)
+            sys.exit("!!ERROR: Invalid seasonality, please run 'indARIMA.py -h for help\n")
+        
+        print("global seasonality set as: " + seasonality)
     # else:
     #     sys.exit("!!ERROR: Argument \'" + sys.argv[argIndex] + "\' not recognized, please run 'ParaARIMA.py -h' for help.\n")
 
@@ -130,7 +136,7 @@ for frameIndex in frameCollection:
     tempMeter = meterWrapper()
     tempMeter.meterID = tempID
 
-    tempGroups = frameIndex.groupby(pd.Grouper(freq='M')) # Binning the data by seasonality, noted in documentation can be more values than whats suggested
+    tempGroups = frameIndex.groupby(pd.Grouper(freq=seasonality)) # Binning the data by seasonality, noted in documentation can be more values than whats suggested
                                                           # TO DO: logic for various seasonality inputs
     tempMeter.seasons = [group for groupIndex, group in tempGroups]
     meterCollection.append(tempMeter)
@@ -156,9 +162,13 @@ for meterIndex in meterCollection:
         trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
         tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
         tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
+        
+        pyplot.plot(tempData.localTrain, label = "Training")
+        pyplot.plot(tempData.localTest, label = "Test")
+        
         print("Done!")
 
-        print("----calculating auto_arima...", end='')
+        print("----calculating auto_arima...")
         if tempData.isStationary == True:
             tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
                                         max_p=5,max_d=5,max_q=5, start_P=0,
@@ -175,8 +185,23 @@ for meterIndex in meterCollection:
                                         error_action='warn',trace=True,
                                         supress_warnings=True,stepwise=True,
                                         random_state=20,n_fits=50)
+        print("----Done!")
+        print("----calculating prediction...", end='')
+        tempData.localPrediction = pd.DataFrame(tempData.arimaModel.predict(n_periods=len(tempData.localTest),
+                                                                            index=tempData.localTest.index))
+        tempData.localPrediction.columns = ['predicted']
+        print("Done!")
+        print("----calculating r2 score...", end='')
+        #r2 score calculation
+        tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
+        print("Done!")
+        print("r2 score:", tempData.r2Result)
+        pyplot.plot(tempData.localPrediction, label = "Predicted")
+        pyplot.legend(loc = 'upper left')
+        pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
 
-
+        pyplot.savefig("./output/"+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
+        pyplot.close() 
         meterIndex.models.append(tempData)
     #wrapperCollection.append(modelWrapper)
     
