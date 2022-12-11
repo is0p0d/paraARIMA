@@ -163,7 +163,7 @@ if __name__ == "__main__":
     #read csv into a pandas dataframe
     arimaFrame = pd.read_csv(inputFile, sep = ',', header = 0)
 
-    #this data conditionining is very specific to the dataset we
+    #this data conditionining is very specific to the dataset
     #remove last row
     arimaFrame = arimaFrame.iloc[:-1]
     #drop second date row

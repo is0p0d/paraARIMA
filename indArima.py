@@ -116,7 +116,7 @@ if numArgs <= 1:
 for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name of the program.
     if sys.argv[argIndex] in ("-h", "--Help"):
         print ("########################################")
-        print ("# ParaARIMA.py - ARIMA Parallelization #")
+        print ("# indARIMA.py                          #")
         print ("########################################")
         print ("[usage]")
         print ("\t[ -i : --Input ] \n\t\t*specifies the file to be read into memory")
@@ -133,7 +133,7 @@ for argIndex in range(1, numArgs): #start at 1 because argv[0] is just the name 
         print ("global outputFile set as: " + outputFile)
     elif sys.argv[argIndex] in ("-s", "--Season"):
         argIndex += 1
-        if sys.argv[argIndex].upper() in ('D', 'W', 'M'):
+        if sys.argv[argIndex].upper() in ('D', 'W', 'M', 'Y'):
             seasonality = sys.argv[argIndex].upper()
         elif sys.argv[argIndex].upper() == 'Q':
             seasonality = '3M'
