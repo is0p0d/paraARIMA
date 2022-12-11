@@ -1,6 +1,6 @@
 ###########################################################
 # Jim Moroney                                    10.27.22 #
-# indARIMA.py                     Directed Studies in HPC #
+# paraARIMA.py                     Directed Studies in HPC #
 # A reqrite of ParaARIMA.py to treat the given data set   #
 # as a set of independent meters.                         #
 ###########################################################
@@ -59,9 +59,6 @@ def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
         tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
         tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
         
-        pyplot.plot(tempData.localTrain, label = "Training")
-        pyplot.plot(tempData.localTest, label = "Test")
-        
         print("Done!")
 
         print("----calculating auto_arima...")
@@ -92,12 +89,16 @@ def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
         tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
         print("Done!")
         print("r2 score:", tempData.r2Result)
+        
+        pyplot.plot(tempData.localTrain, label = "Training")
+        pyplot.plot(tempData.localTest, label = "Test")
         pyplot.plot(tempData.localPrediction, label = "Predicted")
         pyplot.legend(loc = 'upper left')
         pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
 
-        pyplot.savefig("./output/"+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
-        pyplot.close() 
+        pyplot.savefig(outputFile+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
+        pyplot.close()
+
         meterIndex.models.append(tempData)
 
 
@@ -105,9 +106,11 @@ def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
 # global variables (because python)
 adf_test = ADFTest(alpha = 0.05)
 inputFile = "\0"
-outputFile = "\0"
+outputFile = "./"
 seasonality = 'M'
+execution = "s"
 trainVal = .8
+
 
 if __name__ == "__main__":
 
@@ -125,7 +128,8 @@ if __name__ == "__main__":
             print ("[usage]")
             print ("\t[ -i : --Input ] \n\t\t*specifies the file to be read into memory")
             print ("\t[ -o : --Output ] \n\t\t*specifies the file to be written to\n\t\t*if this option is not present the results will not\n\t\t*be written to file")
-            print ("\t[ -s : --Season ] \n\t\t*specifies the seasonality of how the program will\n\t\t*split the given data for modeling\n\t\t*d - daily, w - weekly, m - monthly, q - quarterly, b - biyearly\n\t\t*default is monthly")
+            print ("\t[ -s : --Season ] \n\t\t*specifies the seasonality of how the program will\n\t\t*split the given data for modeling\n\t\t*d - daily, w - weekly, m - monthly, q - quarterly, b - biyearly\n\t\t*default is monthly\n\t\t!!WARNING: See documentation for possible complications")
+            print ("\t[ -e : --Execute ] \n\t\t*specifies whether the arima calculations will run\n\t\t*in serial (s) or parallel (p)\n\t\t!!WARNING: See documentation for possible complications")
             print ("\t[ -h : --Help ] \n\t\t*this! :)\n")
         elif sys.argv[argIndex] in ("-i", "--Input"):
             argIndex += 1
@@ -144,9 +148,16 @@ if __name__ == "__main__":
             elif sys.argv[argIndex].upper() == 'B':
                 seasonality = '6M'
             else:
-                sys.exit("!!ERROR: Invalid seasonality, please run 'indARIMA.py -h for help\n")
-            
+                sys.exit("!!ERROR: Invalid seasonality, please run 'paraARIMA.py -h for help\n") 
             print("global seasonality set as: " + seasonality)
+        elif sys.argv[argIndex] in ("-e", "--Execute"):
+            argIndex += 1
+            if sys.argv[argIndex] in ('s','p'):
+                execution = sys.argv[argIndex]
+            else:
+                sys.exit("!!ERROR: Invalid execution mode, please run 'paraARIMA.py -h for help\n")
+
+
         # else:
         #     sys.exit("!!ERROR: Argument \'" + sys.argv[argIndex] + "\' not recognized, please run 'ParaARIMA.py -h' for help.\n")
 
@@ -212,25 +223,39 @@ if __name__ == "__main__":
 
     ###########################################################
     # Arima Calculations
-    multiprocessing.set_start_method('spawn')
-
-    meterNum = 0
-    for meterIndex in meterCollection:
-        meterNum += 1
-        seasonNum = 0
-        print("ADF on #", meterNum, ":", meterIndex.meterID)
-        StartTime = time.time()
-        for seasonIndex in meterIndex.seasons:
-            seasonNum += 1
-            tempData = arimaData()
-            proc = multiprocessing.Process(target=arima_process, args=(meterIndex, seasonIndex, seasonNum, tempData,))
-            proc.start()
-            processPool.append(proc)
-        for process in processPool:
-            process.join()
-        EndTime = time.time()
-        print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
-
-        #wrapperCollection.append(modelWrapper)
-        
+    if execution == 's':
+        print("Serial ARIMA Calculation selected")
+        meterNum = 0
+        for meterIndex in meterCollection:
+            meterNum += 1
+            seasonNum = 0
+            print("ADF on #", meterNum, ":", meterIndex.meterID)
+            StartTime = time.time()
+            for seasonIndex in meterIndex.seasons:
+                seasonNum += 1
+                tempData = arimaData()
+                arima_process(meterIndex, seasonIndex, seasonNum, tempData)
+            EndTime = time.time()
+            print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
+    elif execution == 'p':
+        print("Parallel ARIMA Calculation selected...")
+        multiprocessing.set_start_method('spawn')
+        meterNum = 0
+        for meterIndex in meterCollection:
+            meterNum += 1
+            seasonNum = 0
+            print("ADF on #", meterNum, ":", meterIndex.meterID)
+            StartTime = time.time()
+            for seasonIndex in meterIndex.seasons:
+                seasonNum += 1
+                tempData = arimaData()
+                proc = multiprocessing.Process(target=arima_process, args=(meterIndex, seasonIndex, seasonNum, tempData,))
+                proc.start()
+                processPool.append(proc)
+            for process in processPool:
+                process.join()
+            EndTime = time.time()
+            print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
+    else:
+        sys.exit("!!ERROR: Unable to determine execution mode.")   
     #pyplot.show()
