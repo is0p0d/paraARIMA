@@ -49,57 +49,57 @@ processPool = []
 ###########################################################
 # functions
 def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
-        seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
-        print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
-        tempData.stationaryP = seasonPval
-        tempData.isStationary = seasonStationary
+    seasonPval, seasonStationary = adf_test.should_diff(seasonIndex)
+    print("--season #", seasonNum, "(", seasonStationary, ",", seasonPval, ")")
+    tempData.stationaryP = seasonPval
+    tempData.isStationary = seasonStationary
 
-        print("----splitting season into train and test...", end='')
-        trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
-        tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
-        tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
-        
-        print("Done!")
+    print("----splitting season into train and test...", end='')
+    trainRows = int(len(seasonIndex) * trainVal) #Get the number of rows that equals the training percentage
+    tempData.localTrain = seasonIndex[:trainRows] #put those rows into a variable
+    tempData.localTest = seasonIndex.drop(tempData.localTrain.index) #throw whats left into test
+    
+    print("Done!")
 
-        print("----calculating auto_arima...")
-        if tempData.isStationary == True:
-            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
-                                        max_p=5,max_d=5,max_q=5, start_P=0,
-                                        D=1, start_Q=0, max_P=5,max_D=5,
-                                        max_Q=5, m=12, seasonal=True,
-                                        error_action='warn',trace=True,
-                                        supress_warnings=True,stepwise=True,
-                                        random_state=20,n_fits=50)
-        elif tempData.isStationary == False:
-            tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=1,start_q=0,
-                                        max_p=5,max_d=5,max_q=5, start_P=0,
-                                        D=1, start_Q=0, max_P=5,max_D=5,
-                                        max_Q=5, m=12, seasonal=True,
-                                        error_action='warn',trace=True,
-                                        supress_warnings=True,stepwise=True,
-                                        random_state=20,n_fits=50)
-        print("----Done!")
-        print("----calculating prediction...", end='')
-        tempData.localPrediction = pd.DataFrame(tempData.arimaModel.predict(n_periods=len(tempData.localTest),
-                                                                            index=tempData.localTest.index))
-        tempData.localPrediction.columns = ['predicted']
-        print("Done!")
-        print("----calculating r2 score...", end='')
-        #r2 score calculation
-        tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
-        print("Done!")
-        print("r2 score:", tempData.r2Result)
-        
-        pyplot.plot(tempData.localTrain, label = "Training")
-        pyplot.plot(tempData.localTest, label = "Test")
-        pyplot.plot(tempData.localPrediction, label = "Predicted")
-        pyplot.legend(loc = 'upper left')
-        pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
+    print("----calculating auto_arima...")
+    if tempData.isStationary == True:
+        tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=0,start_q=0,
+                                    max_p=5,max_d=5,max_q=5, start_P=0,
+                                    D=1, start_Q=0, max_P=5,max_D=5,
+                                    max_Q=5, m=12, seasonal=True,
+                                    error_action='warn',trace=True,
+                                    supress_warnings=True,stepwise=True,
+                                    random_state=20,n_fits=50)
+    elif tempData.isStationary == False:
+        tempData.arimaModel = auto_arima(tempData.localTrain, start_p=0,d=1,start_q=0,
+                                    max_p=5,max_d=5,max_q=5, start_P=0,
+                                    D=1, start_Q=0, max_P=5,max_D=5,
+                                    max_Q=5, m=12, seasonal=True,
+                                    error_action='warn',trace=True,
+                                    supress_warnings=True,stepwise=True,
+                                    random_state=20,n_fits=50)
+    print("----Done!")
+    print("----calculating prediction...", end='')
+    tempData.localPrediction = pd.DataFrame(tempData.arimaModel.predict(n_periods=len(tempData.localTest),
+                                                                        index=tempData.localTest.index))
+    tempData.localPrediction.columns = ['predicted']
+    print("Done!")
+    print("----calculating r2 score...", end='')
+    #r2 score calculation
+    tempData.r2Result = r2_score(tempData.localTest, tempData.localPrediction)
+    print("Done!")
+    print("r2 score:", tempData.r2Result)
+    
+    pyplot.plot(tempData.localTrain, label = "Training")
+    pyplot.plot(tempData.localTest, label = "Test")
+    pyplot.plot(tempData.localPrediction, label = "Predicted")
+    pyplot.legend(loc = 'upper left')
+    pyplot.title(str(meterIndex.meterID) + ", season " + str(seasonNum) + ", r2:" + str(tempData.r2Result))
 
-        pyplot.savefig(outputFile+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
-        pyplot.close()
+    pyplot.savefig(outputFile+str(meterIndex.meterID)+"_season"+str(seasonNum)+".png", dpi=300)
+    pyplot.close()
 
-        meterIndex.models.append(tempData)
+    meterIndex.models.append(tempData)
 
 
 ###########################################################
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     ###########################################################
     # Arima Calculations
     if execution == 's':
-        print("Serial ARIMA Calculation selected")
+        print("Serial ARIMA Calculation selected...")
         meterNum = 0
         for meterIndex in meterCollection:
             meterNum += 1
