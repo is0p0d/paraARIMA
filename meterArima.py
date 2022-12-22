@@ -1,7 +1,7 @@
 ###########################################################
 # Jim Moroney                                    10.27.22 #
-# paraARIMA.py                     Directed Studies in HPC #
-# A reqrite of ParaARIMA.py to treat the given data set   #
+# meterARIMA.py                   Directed Studies in HPC #
+# A rewrite of ParaARIMA.py to treat the given data set   #
 # as a set of independent meters.                         #
 ###########################################################
 
