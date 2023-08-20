@@ -22,7 +22,7 @@ from pmdarima.arima import ADFTest
 from pmdarima.arima import auto_arima
 from dataclasses import dataclass
 from matplotlib import pyplot
-from sklearn.metrics import r2_score
+from scikit-learn.metrics import r2_score
 
 ###########################################################
 # Data Structures
@@ -65,19 +65,20 @@ def arima_process(meterIndex, seasonIndex, seasonNum, tempData):
     if tempData.isStationary == True:
         tempData.arimaModel = auto_arima(tempData.localTrain, start_p=1,start_q=1,
                                     test='adf',
-                                    max_p=3,max_q=3,
+                                    max_p=10,max_q=10,
                                     m=1,
                                     d=None, start_P=0,
-                                    D=1,
+                                    D=None,
                                     seasonal=True,
                                     error_action='warn',trace=True,
                                     supress_warnings=True,stepwise=True)
     elif tempData.isStationary == False:
         tempData.arimaModel = auto_arima(tempData.localTrain, start_p=1,start_q=1,
-                                    max_p=3,max_q=3,
+                                    test='adf',
+                                    max_p=10,max_q=10,
                                     m=1,
                                     d=None, start_P=0,
-                                    D=1,
+                                    D=None,
                                     seasonal=True,
                                     error_action='warn',trace=True,
                                     supress_warnings=True,stepwise=True)
