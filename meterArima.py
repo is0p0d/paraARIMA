@@ -228,7 +228,7 @@ if __name__ == "__main__":
     ###########################################################
     # Arima Calculations
     if execution == 's':
-        print("Serial ARIMA Calculation selected...")
+        print("\033[92mSerial ARIMA Calculation selected...\033[0m")
         meterNum = 0
         for meterIndex in meterCollection:
             meterNum += 1
@@ -242,7 +242,7 @@ if __name__ == "__main__":
             EndTime = time.time()
             print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
     elif execution == 'p':
-        print("Parallel ARIMA Calculation selected...")
+        print("\033[92mParallel ARIMA Calculation selected...\033[0m")
         multiprocessing.set_start_method('spawn')
         meterNum = 0
         for meterIndex in meterCollection:
