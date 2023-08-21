@@ -11,6 +11,7 @@
 
 ###########################################################
 # library imports
+import os
 import sys
 import time
 import multiprocessing
@@ -22,7 +23,7 @@ from pmdarima.arima import ADFTest
 from pmdarima.arima import auto_arima
 from dataclasses import dataclass
 from matplotlib import pyplot
-from scikit-learn.metrics import r2_score
+from sklearn.metrics import r2_score
 
 ###########################################################
 # Data Structures
@@ -228,7 +229,7 @@ if __name__ == "__main__":
     ###########################################################
     # Arima Calculations
     if execution == 's':
-        print("\033[92mSerial ARIMA Calculation selected...\033[0m")
+        print("\033[92m Serial ARIMA Calculation selected...\033[0m")
         meterNum = 0
         for meterIndex in meterCollection:
             meterNum += 1
@@ -242,7 +243,7 @@ if __name__ == "__main__":
             EndTime = time.time()
             print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
     elif execution == 'p':
-        print("\033[92mParallel ARIMA Calculation selected...\033[0m")
+        print("\033[92m Parallel ARIMA Calculation selected...\033[0m")
         multiprocessing.set_start_method('spawn')
         meterNum = 0
         for meterIndex in meterCollection:
@@ -261,5 +262,5 @@ if __name__ == "__main__":
             EndTime = time.time()
             print("\033[93m!!TIMING: ARIMA processing done in {:.4f} seconds \033[0m".format(EndTime-StartTime))
     else:
-        sys.exit("!!ERROR: Unable to determine execution mode.")   
+        sys.exit("\033[91m!!ERROR: Unable to determine execution mode. \033[0m")   
     #pyplot.show()
